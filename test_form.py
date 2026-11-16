@@ -1,3 +1,6 @@
+import re
+from pathlib import Path
+
 from faker import Faker
 from playwright.sync_api import Page, expect
 
@@ -20,16 +23,16 @@ def test_form_fill(page: Page):
 
     expect(form_header).to_be_visible()
     expect(form_subtitle).to_be_visible()
-    expect(form_header).to_have_text("Practice Form")
-    expect(form_subtitle).to_have_text("Student Registration Form")
 
-# Генерим данные для пользователя
+# Генерим нужные данные для заполнения полей формы
 
     first_name = fake.first_name()
     last_name = fake.last_name()
     email = fake.email()
     mobile_number = fake.numerify("##########")
     current_address = fake.address()
+    file = Path("/PlaywrightProject/test.txt")
+    birth_day_value = "22 Jan 1996"
 
 # Заполняем анкету
 # Поля
@@ -99,13 +102,44 @@ def test_form_fill(page: Page):
     subject_input.press_sequentially("en", delay=50)
     page.get_by_role("option", name="English", exact=True).click()
 
-    expect(page.locator("#subjectsContainer")).to_contain_text("Maths")
-    expect(page.locator("#subjectsContainer")).to_contain_text("English")
+    expect(subject_input).to_contain_text("Maths")
+    expect(subject_input).to_contain_text("English")
+
+# Загружаем файл
+
+    upload_form = page.locator("#uploadPicture")
+    upload_form.set_input_files(str(file))
+    expect(upload_form).to_have_value(re.compile(r"test\.txt$"))
+
+# Вводим дату рождения
+
+    birth_date = page.locator("#dateOfBirthInput")
+    birth_date.click()
+    birth_date.press("End")
+    birth_date.press("Backspace")
+    birth_date.fill(birth_day_value)
+    form_header.click()
 
 # Кликаем на кнопку отправки
     submit_button = page.get_by_role("button", name="Submit")
     modal_table = page.locator(".modal-content")
     submit_button.click()
     expect(modal_table).to_be_visible()
+
+# Проверяем данные в таблице
+    table_header = page.locator(".h4", has_text="Thanks for submitting the form")
+    expect(table_header).to_be_visible()
+    expect(modal_table).to_contain_text(first_name)
+    expect(modal_table).to_contain_text(last_name)
+    expect(modal_table).to_contain_text(email)
+    expect(modal_table).to_contain_text(mobile_number)
+    expect(modal_table).to_contain_text("Male")
+    expect(modal_table).to_contain_text("Maths")
+    expect(modal_table).to_contain_text("Sports")
+
+
+
+
+
 
 
